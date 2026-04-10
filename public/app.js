@@ -351,9 +351,7 @@
     state.weekStart = weekStart(new Date());
     loadWeekSlots();
 
-    dom.stepDuration.scrollIntoView
-      ? (hasDurations ? dom.stepDuration : dom.stepDate).scrollIntoView({ behavior: "smooth", block: "start" })
-      : null;
+    (hasDurations ? dom.stepDuration : dom.stepDate).scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function selectDate(d) {

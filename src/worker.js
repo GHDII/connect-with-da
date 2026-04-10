@@ -10,6 +10,9 @@ import manifestJSON from "__STATIC_CONTENT_MANIFEST";
 
 const assetManifest = JSON.parse(manifestJSON);
 
+/* Allowed Cal.com event type IDs — prevents enumeration of other events */
+const ALLOWED_EVENT_TYPES = new Set(["454747", "454745"]);
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -66,6 +69,13 @@ async function handleSlots(url, env) {
     return jsonResponse(
       { status: "error", message: "Missing required parameters: eventTypeId, startTime, endTime" },
       400
+    );
+  }
+
+  if (!ALLOWED_EVENT_TYPES.has(eventTypeId)) {
+    return jsonResponse(
+      { status: "error", message: "Invalid event type" },
+      403
     );
   }
 
