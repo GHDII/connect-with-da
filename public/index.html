@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connect with David Alexander</title>
+  <meta name="description" content="Schedule a Discovery Call or Private Meeting with David Alexander.">
+  <meta name="theme-color" content="#0a0e1a">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#9830;</text></svg>">
+</head>
+<body>
+  <!-- Ambient background -->
+  <div class="ambient-bg" aria-hidden="true">
+    <div class="ambient-orb ambient-orb--1"></div>
+    <div class="ambient-orb ambient-orb--2"></div>
+    <div class="ambient-orb ambient-orb--3"></div>
+  </div>
+
+  <main class="container">
+    <!-- ─── Hero ─── -->
+    <section class="hero" aria-label="Introduction">
+      <div class="hero__monogram" aria-hidden="true">DA</div>
+      <p class="hero__eyebrow">Private Scheduling</p>
+      <h1 class="hero__title">David Alexander</h1>
+      <p class="hero__subtitle">Select a meeting type below and choose a time that works best for you.</p>
+    </section>
+
+    <!-- ─── Meeting Type Selection ─── -->
+    <section class="meeting-types" aria-label="Select meeting type">
+      <h2 class="section-label">Select Meeting Type</h2>
+      <div class="meeting-types__grid">
+
+        <button class="meeting-card" data-event-id="454747" data-slug="discovery" data-durations="60,120,180" aria-label="Discovery Call">
+          <div class="meeting-card__icon-wrap">
+            <svg class="meeting-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94"/>
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+          </div>
+          <h3 class="meeting-card__title">Discovery Call</h3>
+          <p class="meeting-card__meta">3 Total Hours &middot; 1 &ndash; 3 Sessions</p>
+          <p class="meeting-card__desc">Deep-dive consultation to explore partnership opportunities and strategic alignment.</p>
+          <span class="meeting-card__badge">$25,000</span>
+        </button>
+
+        <button class="meeting-card" data-event-id="454745" data-slug="online-meeting" data-durations="60,120" aria-label="Online Meeting">
+          <div class="meeting-card__icon-wrap">
+            <svg class="meeting-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+          </div>
+          <h3 class="meeting-card__title">Online Meeting</h3>
+          <p class="meeting-card__meta">1 &ndash; 2 Hours &middot; By Invitation</p>
+          <p class="meeting-card__desc">Private virtual meeting for invited participants. Secure video conference link provided upon confirmation.</p>
+          <span class="meeting-card__badge meeting-card__badge--invite">By Invitation</span>
+        </button>
+
+      </div>
+    </section>
+
+    <!-- ─── Duration Selector (shown after meeting type) ─── -->
+    <section class="duration-section hidden" id="durationSection" aria-label="Select duration">
+      <h2 class="section-label">Select Duration</h2>
+      <div class="duration-grid" id="durationGrid"></div>
+    </section>
+
+    <!-- ─── Calendar ─── -->
+    <section class="calendar-section hidden" id="calendarSection" aria-label="Select date and time">
+      <h2 class="section-label">
+        Select Date
+        <span class="tz-badge" id="tzBadge" aria-label="Your timezone"></span>
+      </h2>
+
+      <div class="calendar">
+        <div class="calendar__nav">
+          <button class="calendar__nav-btn" id="prevWeek" aria-label="Previous week">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span class="calendar__month" id="calendarMonth"></span>
+          <button class="calendar__nav-btn" id="nextWeek" aria-label="Next week">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+
+        <div class="calendar__week" id="calendarWeek" role="listbox" aria-label="Available dates"></div>
+      </div>
+
+      <!-- Time Slots -->
+      <div class="timeslots" id="timeslotsContainer">
+        <p class="timeslots__prompt" id="timeslotsPrompt">Select a date above to view available times</p>
+        <div class="timeslots__loading hidden" id="timeslotsLoading">
+          <div class="spinner" aria-label="Loading available times"></div>
+          <p>Checking availability&hellip;</p>
+        </div>
+        <div class="timeslots__grid hidden" id="timeslotsGrid" role="listbox" aria-label="Available time slots"></div>
+        <p class="timeslots__empty hidden" id="timeslotsEmpty">No available times on this date. Please try another day.</p>
+      </div>
+    </section>
+
+    <!-- ─── Booking Confirmation Area ─── -->
+    <section class="booking-section hidden" id="bookingSection" aria-label="Confirm booking">
+      <h2 class="section-label">Your Selection</h2>
+      <div class="booking-summary" id="bookingSummary"></div>
+      <button class="btn-primary" id="bookBtn">Continue to Book</button>
+      <button class="btn-secondary" id="backBtn">Change Selection</button>
+    </section>
+
+    <!-- ─── Contact ─── -->
+    <section class="contact" aria-label="Contact information">
+      <div class="contact__divider"></div>
+      <p class="contact__name">David Alexander</p>
+      <p class="contact__role">Data Image International</p>
+      <div class="contact__links">
+        <a href="mailto:dataimageintl@gmail.com" class="contact__link">dataimageintl@gmail.com</a>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>&copy; <span id="footerYear"></span> David Alexander. All rights reserved.</p>
+    </footer>
+  </main>
+
+  <!-- Cal.com Embed (loaded lazily for booking step) -->
+  <script>
+    (function(C,A,L){
+      let p=function(a,ar){a.q.push(ar)};
+      let d=C.document;
+      C.Cal=C.Cal||function(){
+        let cal=C.Cal;
+        let ar=arguments;
+        if(!cal.loaded){
+          cal.ns={};cal.q=cal.q||[];
+          d.head.appendChild(d.createElement("script")).src=A;
+          cal.loaded=true;
+        }
+        if(ar[0]===L){
+          const api=function(){p(api,arguments)};
+          const namespace=ar[1];
+          api.q=api.q||[];
+          if(typeof namespace==="string"){cal.ns[namespace]=cal.ns[namespace]||api;p(cal.ns[namespace],ar);p(cal,["initNamespace",namespace])}
+          else p(cal,ar);
+          return;
+        }
+        p(cal,ar);
+      };
+    })(window,"https://app.cal.com/embed/embed.js","init");
+
+    Cal("init", "booking", { origin: "https://cal.com" });
+    Cal.ns.booking("ui", {
+      theme: "dark",
+      styles: { branding: { brandColor: "#c9a84c" } },
+      hideEventTypeDetails: false
+    });
+  </script>
+
+  <script src="/app.js"></script>
+</body>
+</html>

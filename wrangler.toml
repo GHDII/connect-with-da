@@ -1,0 +1,7 @@
+name = "connect-with-da"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "public"
+
+[vars]
+# CAL_API_KEY is set as a secret in the Cloudflare Pages dashboard
+# Do NOT put the actual key here
