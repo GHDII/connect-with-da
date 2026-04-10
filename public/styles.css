@@ -393,11 +393,47 @@ main {
   letter-spacing: 0.02em;
   align-self: flex-start;
   margin-top: 4px;
+  position: relative;
+  overflow: hidden;
 }
 
 .option__badge--subtle {
   color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.04);
+}
+
+/* Progressive pricing reveal */
+.option__badge--reveal {
+  min-width: 56px;
+  text-align: center;
+}
+
+.option__badge-default,
+.option__badge-hover {
+  display: block;
+  transition: all 0.35s var(--ease);
+}
+
+.option__badge-hover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.option:hover .option__badge--reveal .option__badge-default,
+.option--active .option__badge--reveal .option__badge-default {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.option:hover .option__badge--reveal .option__badge-hover,
+.option--active .option__badge--reveal .option__badge-hover {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* ─── Duration Pills ─── */
@@ -433,18 +469,11 @@ main {
 }
 
 /* ─── Calendar ─── */
-.cal {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 1.25rem;
-}
-
 .cal__nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1rem;
 }
 
 .cal__arrow {
@@ -479,27 +508,29 @@ main {
 .cal__strip {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
+  gap: 8px;
 }
 
-/* Day Cell */
+/* Day Cell — Card-based design */
 .day {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 0.65rem 0.25rem;
+  justify-content: center;
+  gap: 6px;
+  padding: 0.85rem 0.25rem;
   border-radius: var(--radius);
   border: 1px solid transparent;
-  transition: all 0.3s var(--ease);
+  transition: all 0.35s var(--ease);
   position: relative;
   cursor: default;
+  min-height: 80px;
 }
 
 .day__label {
-  font-size: 0.6rem;
-  font-weight: 500;
-  letter-spacing: 0.1em;
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-dim);
   transition: color 0.3s var(--ease);
@@ -507,11 +538,11 @@ main {
 
 .day__num {
   font-family: var(--font-display);
-  font-weight: 500;
-  font-size: 1.35rem;
+  font-weight: 400;
+  font-size: 1.65rem;
   line-height: 1;
   color: var(--text-dim);
-  transition: all 0.3s var(--ease);
+  transition: all 0.35s var(--ease);
 }
 
 .day__dot {
@@ -519,44 +550,74 @@ main {
   height: 4px;
   border-radius: 50%;
   background: transparent;
-  transition: background 0.3s var(--ease);
+  transition: all 0.3s var(--ease);
 }
 
-/* Available */
+/* Available — prominent card treatment */
 .day--available {
   cursor: pointer;
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.day--available .day__label { color: var(--text-secondary); }
-.day--available .day__num   { color: var(--text); font-weight: 600; }
-.day--available .day__dot   { background: var(--accent); opacity: 0.6; }
+.day--available .day__label {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.day--available .day__num {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 1.75rem;
+}
+
+.day--available .day__dot {
+  background: var(--accent);
+  opacity: 0.7;
+}
 
 .day--available:hover {
-  background: var(--surface-hover);
-  border-color: rgba(255, 255, 255, 0.08);
-  transform: translateY(-2px);
+  background: var(--surface-raised);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
 }
 
 .day--available:hover .day__num {
   color: var(--accent);
 }
 
-/* Selected */
+.day--available:hover .day__label {
+  color: var(--text);
+}
+
+/* Selected — golden emphasis */
 .day--selected {
   background: var(--accent-dim) !important;
   border-color: var(--accent) !important;
-  transform: translateY(-2px) !important;
-  box-shadow: 0 4px 20px var(--accent-dim);
+  transform: translateY(-3px) !important;
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 6px 24px rgba(196, 162, 101, 0.2) !important;
 }
 
 .day--selected .day__label { color: var(--accent); }
-.day--selected .day__num   { color: var(--accent); }
-.day--selected .day__dot   { background: var(--accent); opacity: 1; }
+.day--selected .day__num   { color: var(--accent); font-weight: 600; }
+.day--selected .day__dot   { background: var(--accent); opacity: 1; width: 5px; height: 5px; }
+
+/* Unavailable — ghost treatment (no card) */
+.day:not(.day--available) {
+  background: transparent;
+  border-color: transparent;
+  opacity: 0.4;
+}
 
 /* Today indicator */
 .day--today .day__num {
   text-decoration: underline;
   text-underline-offset: 3px;
+  text-decoration-color: var(--accent);
 }
 
 /* ─── Time Slots ─── */
@@ -833,9 +894,10 @@ main {
   .option { padding: 1rem 1rem 1rem 1.25rem; }
   .option__desc { display: none; }
 
-  .cal__strip { gap: 3px; }
-  .day { padding: 0.5rem 0.15rem; }
-  .day__num { font-size: 1.1rem; }
+  .cal__strip { gap: 4px; }
+  .day { padding: 0.6rem 0.15rem; min-height: 68px; }
+  .day__num { font-size: 1.25rem; }
+  .day--available .day__num { font-size: 1.35rem; }
 
   .times-grid {
     grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
@@ -844,6 +906,7 @@ main {
 
 @media (max-width: 380px) {
   .option__badge { display: none; }
-  .cal__strip { gap: 2px; }
+  .cal__strip { gap: 3px; }
   .day__label { font-size: 0.5rem; }
+  .day { min-height: 60px; }
 }
