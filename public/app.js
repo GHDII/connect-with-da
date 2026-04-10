@@ -1,11 +1,12 @@
 /* ═══════════════════════════════════════════════════
-   Connect with DA — Application Logic
+   Connect with DA — Application Logic v2
+   "The Private Chamber" — Editorial-luxury scheduling
    ═══════════════════════════════════════════════════ */
 
 (function () {
   "use strict";
 
-  /* ─── Configuration ─── */
+  /* ─── Config ─── */
   const CONFIG = {
     calUsername: "meetwithda",
     calOrigin: "https://cal.com",
@@ -30,126 +31,119 @@
 
   /* ─── State ─── */
   const state = {
-    selectedEventId: null,
-    selectedDuration: null,
-    selectedDate: null,
-    selectedSlot: null,
+    eventId: null,
+    duration: null,
+    date: null,
+    slot: null,
     weekStart: null,
     slots: {},
-    loading: false,
     apiAvailable: true,
     embedLoaded: {},
   };
 
-  /* ─── DOM References ─── */
-  const $ = (sel) => document.querySelector(sel);
-  const $$ = (sel) => document.querySelectorAll(sel);
+  /* ─── DOM ─── */
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => document.querySelectorAll(s);
 
   const dom = {
-    meetingCards: $$(".meeting-card"),
-    durationSection: $("#durationSection"),
-    durationGrid: $("#durationGrid"),
-    calendarSection: $("#calendarSection"),
-    calendarMonth: $("#calendarMonth"),
-    calendarWeek: $("#calendarWeek"),
+    viewSelection: $("#viewSelection"),
+    viewBooking: $("#viewBooking"),
+    viewEmbed: $("#viewEmbed"),
+    options: $$("#meetingOptions .option"),
+    stepDuration: $("#stepDuration"),
+    durationPills: $("#durationPills"),
+    stepDate: $("#stepDate"),
+    dateStepNum: $("#dateStepNum"),
+    tzLabel: $("#tzLabel"),
+    calMonth: $("#calMonth"),
+    calStrip: $("#calStrip"),
     prevWeek: $("#prevWeek"),
     nextWeek: $("#nextWeek"),
-    tzBadge: $("#tzBadge"),
-    timeslotsPrompt: $("#timeslotsPrompt"),
-    timeslotsLoading: $("#timeslotsLoading"),
-    timeslotsGrid: $("#timeslotsGrid"),
-    timeslotsEmpty: $("#timeslotsEmpty"),
-    embedSection: $("#embedSection"),
-    calEmbedInline: $("#calEmbedInline"),
-    bookingSection: $("#bookingSection"),
-    bookingSummary: $("#bookingSummary"),
+    stepTime: $("#stepTime"),
+    timeStepNum: $("#timeStepNum"),
+    dateBadge: $("#dateBadge"),
+    timesLoading: $("#timesLoading"),
+    timesPrompt: $("#timesPrompt"),
+    timesGrid: $("#timesGrid"),
+    timesEmpty: $("#timesEmpty"),
+    confirmBar: $("#confirmBar"),
+    confirmDetails: $("#confirmDetails"),
     bookBtn: $("#bookBtn"),
+    resetBtn: $("#resetBtn"),
     backBtn: $("#backBtn"),
-    footerYear: $("#footerYear"),
+    bookingRecap: $("#bookingRecap"),
+    calEmbedWrap: $("#calEmbedWrap"),
+    calEmbedInline: $("#calEmbedInline"),
+    year: $("#year"),
   };
 
   /* ─── Helpers ─── */
-  const DAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-  const MONTH_NAMES = [
+  const DAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  const MONTHS = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December",
   ];
 
-  function getUserTimezone() {
-    try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone;
-    } catch (_) {
-      return "America/Los_Angeles";
+  function tz() {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone; }
+    catch (_) { return "America/Los_Angeles"; }
+  }
+
+  function fmtTime(iso) {
+    return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
+  }
+
+  function fmtDateLong(d) {
+    return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  }
+
+  function fmtDateShort(d) {
+    return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+  }
+
+  function dateKey(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  }
+
+  function weekStart(d) {
+    const w = new Date(d);
+    w.setDate(w.getDate() - w.getDay());
+    w.setHours(0, 0, 0, 0);
+    return w;
+  }
+
+  function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+  function isToday(d) { return dateKey(d) === dateKey(new Date()); }
+  function isPast(d) { const n = new Date(); n.setHours(0,0,0,0); return d < n; }
+
+  function show(el) { if (el) { el.classList.remove("hidden"); } }
+  function hide(el) { if (el) { el.classList.add("hidden"); } }
+
+  function showStep(el) {
+    if (el) {
+      el.classList.remove("step--collapsed");
+      el.classList.add("step--visible");
     }
   }
 
-  function formatTime(isoString) {
-    const d = new Date(isoString);
-    return d.toLocaleTimeString([], {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
+  function hideStep(el) {
+    if (el) {
+      el.classList.add("step--collapsed");
+      el.classList.remove("step--visible");
+    }
+  }
+
+  function switchView(target) {
+    [dom.viewSelection, dom.viewBooking, dom.viewEmbed].forEach((v) => {
+      v.classList.remove("view--active");
     });
-  }
-
-  function formatDateLong(date) {
-    return date.toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  }
-
-  function toDateKey(date) {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const d = String(date.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  }
-
-  function getWeekStart(date) {
-    const d = new Date(date);
-    const day = d.getDay();
-    d.setDate(d.getDate() - day);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }
-
-  function addDays(date, n) {
-    const d = new Date(date);
-    d.setDate(d.getDate() + n);
-    return d;
-  }
-
-  function isToday(date) {
-    const now = new Date();
-    return toDateKey(date) === toDateKey(now);
-  }
-
-  function isPast(date) {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    return date < now;
-  }
-
-  function show(el) {
-    el.classList.remove("hidden");
-    el.classList.add("section-enter");
-  }
-
-  function hide(el) {
-    el.classList.add("hidden");
-    el.classList.remove("section-enter");
+    target.classList.add("view--active");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   /* ─── API ─── */
-  async function fetchSlots(eventTypeId, startDate, endDate) {
-    const url =
-      `${CONFIG.apiBase}/slots?eventTypeId=${eventTypeId}` +
-      `&startTime=${startDate.toISOString()}` +
-      `&endTime=${endDate.toISOString()}` +
-      `&duration=${state.selectedDuration || ""}`;
+  async function fetchSlots(eventTypeId, start, end) {
+    const url = `${CONFIG.apiBase}/slots?eventTypeId=${eventTypeId}&startTime=${start.toISOString()}&endTime=${end.toISOString()}&duration=${state.duration || ""}`;
     try {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -158,300 +152,283 @@
       state.apiAvailable = true;
       return json.data?.slots || json.slots || {};
     } catch (err) {
-      console.warn("API proxy unavailable, falling back to Cal.com embed:", err.message);
+      console.warn("API proxy unavailable:", err.message);
       state.apiAvailable = false;
       return null;
     }
   }
 
-  /* ─── Cal.com Embed Fallback ─── */
+  /* ─── Embed Fallback ─── */
   function showEmbedFallback() {
-    const cfg = CONFIG.eventTypes[state.selectedEventId];
+    const cfg = CONFIG.eventTypes[state.eventId];
     if (!cfg) return;
 
-    hide(dom.calendarSection);
-    hide(dom.durationSection);
-    hide(dom.bookingSection);
-
-    const embedKey = `${cfg.slug}-${state.selectedDuration || ""}`;
-    if (!state.embedLoaded[embedKey]) {
+    const key = cfg.slug;
+    if (!state.embedLoaded[key]) {
       dom.calEmbedInline.innerHTML = "";
-
       if (window.Cal && window.Cal.ns) {
-        const nsName = "embed-" + cfg.slug;
-        Cal("init", nsName, { origin: CONFIG.calOrigin });
-        Cal.ns[nsName]("inline", {
+        const ns = "embed-" + cfg.slug;
+        Cal("init", ns, { origin: CONFIG.calOrigin });
+        Cal.ns[ns]("inline", {
           elementOrSelector: "#calEmbedInline",
           calLink: `${CONFIG.calUsername}/${cfg.slug}`,
-          config: {
-            theme: "dark",
-            styles: { branding: { brandColor: "#c9a84c" } },
-          },
+          config: { theme: "dark", styles: { branding: { brandColor: "#c4a265" } } },
         });
-        Cal.ns[nsName]("ui", {
-          theme: "dark",
-          styles: { branding: { brandColor: "#c9a84c" } },
-        });
+        Cal.ns[ns]("ui", { theme: "dark", styles: { branding: { brandColor: "#c4a265" } } });
       } else {
-        /* Absolute fallback: link to Cal.com */
-        dom.calEmbedInline.innerHTML = `
-          <a href="${CONFIG.calOrigin}/${CONFIG.calUsername}/${cfg.slug}"
-             target="_blank" class="btn-primary" style="display:inline-block;text-align:center;text-decoration:none;margin-top:1rem">
-            Open Booking Page
-          </a>`;
+        dom.calEmbedInline.innerHTML = `<a href="${CONFIG.calOrigin}/${CONFIG.calUsername}/${cfg.slug}" target="_blank" class="btn-gold" style="display:inline-block;text-align:center;text-decoration:none;margin-top:1rem">Open Booking Page</a>`;
       }
-      state.embedLoaded[embedKey] = true;
+      state.embedLoaded[key] = true;
     }
 
-    show(dom.embedSection);
-    dom.embedSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    switchView(dom.viewEmbed);
   }
 
-  /* ─── Render: Duration Selector ─── */
+  /* ─── Render: Duration Pills ─── */
   function renderDurations() {
-    const cfg = CONFIG.eventTypes[state.selectedEventId];
+    const cfg = CONFIG.eventTypes[state.eventId];
     if (!cfg || cfg.durations.length <= 1) {
-      hide(dom.durationSection);
-      state.selectedDuration = cfg ? cfg.defaultDuration : null;
+      hideStep(dom.stepDuration);
+      state.duration = cfg ? cfg.defaultDuration : null;
       return;
     }
 
-    dom.durationGrid.innerHTML = "";
+    dom.durationPills.innerHTML = "";
     cfg.durations.forEach((dur) => {
       const btn = document.createElement("button");
-      btn.className = "duration-btn" + (dur === state.selectedDuration ? " active" : "");
-      btn.textContent = dur >= 60 ? `${dur / 60} hr${dur > 60 ? "s" : ""}` : `${dur} min`;
-      btn.setAttribute("aria-label", btn.textContent);
+      btn.className = "pill" + (dur === state.duration ? " pill--active" : "");
+      if (dur >= 60) {
+        const hrs = dur / 60;
+        btn.textContent = `${hrs} hr${hrs > 1 ? "s" : ""}`;
+      } else {
+        btn.textContent = `${dur} min`;
+      }
       btn.addEventListener("click", () => {
-        state.selectedDuration = dur;
-        state.selectedSlot = null;
+        state.duration = dur;
+        state.slot = null;
         renderDurations();
+        hide(dom.confirmBar);
         loadWeekSlots();
       });
-      dom.durationGrid.appendChild(btn);
+      dom.durationPills.appendChild(btn);
     });
 
-    show(dom.durationSection);
+    showStep(dom.stepDuration);
   }
 
-  /* ─── Render: Calendar ─── */
+  /* ─── Render: Calendar Strip ─── */
   function renderCalendar() {
     const ws = state.weekStart;
     if (!ws) return;
 
-    /* Month label — show range if week spans two months */
-    const weekEnd = addDays(ws, 6);
-    if (ws.getMonth() === weekEnd.getMonth()) {
-      dom.calendarMonth.textContent = `${MONTH_NAMES[ws.getMonth()]} ${ws.getFullYear()}`;
-    } else {
-      dom.calendarMonth.textContent =
-        `${MONTH_NAMES[ws.getMonth()].slice(0, 3)} – ${MONTH_NAMES[weekEnd.getMonth()]} ${weekEnd.getFullYear()}`;
-    }
+    const we = addDays(ws, 6);
+    dom.calMonth.textContent = ws.getMonth() === we.getMonth()
+      ? `${MONTHS[ws.getMonth()]} ${ws.getFullYear()}`
+      : `${MONTHS[ws.getMonth()].slice(0,3)} – ${MONTHS[we.getMonth()]} ${we.getFullYear()}`;
 
-    /* Disable prev if week is in the past */
-    const thisWeekStart = getWeekStart(new Date());
-    dom.prevWeek.disabled = ws <= thisWeekStart;
+    dom.prevWeek.disabled = ws <= weekStart(new Date());
 
-    /* Days */
-    dom.calendarWeek.innerHTML = "";
+    dom.calStrip.innerHTML = "";
     for (let i = 0; i < 7; i++) {
-      const day = addDays(ws, i);
-      const key = toDateKey(day);
-      const hasSlots = state.slots[key] && state.slots[key].length > 0;
-      const past = isPast(day);
-      const available = hasSlots && !past;
+      const d = addDays(ws, i);
+      const k = dateKey(d);
+      const hasSlots = state.slots[k] && state.slots[k].length > 0;
+      const past = isPast(d);
+      const avail = hasSlots && !past;
+      const selected = state.date && dateKey(state.date) === k;
 
-      const btn = document.createElement("button");
-      btn.className = "calendar__day";
-      if (available) btn.classList.add("calendar__day--available");
-      else btn.classList.add("calendar__day--unavailable");
-      if (isToday(day)) btn.classList.add("calendar__day--today");
-      if (state.selectedDate && toDateKey(state.selectedDate) === key) {
-        btn.classList.add("calendar__day--selected");
-      }
-      btn.setAttribute("role", "option");
-      btn.setAttribute("aria-selected", state.selectedDate && toDateKey(state.selectedDate) === key ? "true" : "false");
-      btn.setAttribute("aria-label", `${DAY_NAMES[day.getDay()]} ${day.getDate()}${available ? "" : " (unavailable)"}`);
+      const cell = document.createElement("button");
+      cell.className = "day";
+      if (avail) cell.classList.add("day--available");
+      if (selected) cell.classList.add("day--selected");
+      if (isToday(d)) cell.classList.add("day--today");
+      cell.setAttribute("role", "option");
+      cell.setAttribute("aria-selected", selected ? "true" : "false");
+      cell.setAttribute("aria-label", `${DAYS[d.getDay()]} ${d.getDate()}${avail ? "" : " (unavailable)"}`);
 
-      btn.innerHTML = `
-        <span class="calendar__day-label">${DAY_NAMES[day.getDay()]}</span>
-        <span class="calendar__day-num">${day.getDate()}</span>
+      cell.innerHTML = `
+        <span class="day__label">${DAYS[d.getDay()]}</span>
+        <span class="day__num">${d.getDate()}</span>
+        <span class="day__dot"></span>
       `;
 
-      if (available) {
-        btn.addEventListener("click", () => selectDate(day));
+      if (avail) {
+        cell.addEventListener("click", () => selectDate(d));
       }
 
-      dom.calendarWeek.appendChild(btn);
+      dom.calStrip.appendChild(cell);
     }
   }
 
-  /* ─── Render: Time Slots ─── */
-  function renderTimeSlots() {
-    if (!state.selectedDate) {
-      show(dom.timeslotsPrompt);
-      hide(dom.timeslotsGrid);
-      hide(dom.timeslotsEmpty);
-      hide(dom.timeslotsLoading);
+  /* ─── Render: Time Grid ─── */
+  function renderTimes() {
+    if (!state.date) {
+      show(dom.timesPrompt);
+      hide(dom.timesGrid);
+      hide(dom.timesEmpty);
+      hide(dom.timesLoading);
       return;
     }
 
-    const key = toDateKey(state.selectedDate);
-    const daySlots = state.slots[key] || [];
+    dom.dateBadge.textContent = fmtDateShort(state.date);
 
-    hide(dom.timeslotsPrompt);
-    hide(dom.timeslotsLoading);
+    const k = dateKey(state.date);
+    const daySlots = state.slots[k] || [];
+
+    hide(dom.timesPrompt);
+    hide(dom.timesLoading);
 
     if (daySlots.length === 0) {
-      hide(dom.timeslotsGrid);
-      show(dom.timeslotsEmpty);
+      hide(dom.timesGrid);
+      show(dom.timesEmpty);
       return;
     }
 
-    hide(dom.timeslotsEmpty);
-    dom.timeslotsGrid.innerHTML = "";
+    hide(dom.timesEmpty);
+    dom.timesGrid.innerHTML = "";
 
-    daySlots.forEach((slot) => {
+    daySlots.forEach((slot, idx) => {
       const btn = document.createElement("button");
-      btn.className = "timeslot-btn";
-      if (state.selectedSlot === slot.time) btn.classList.add("active");
-      btn.textContent = formatTime(slot.time);
+      btn.className = "time-btn";
+      if (state.slot === slot.time) btn.classList.add("time-btn--active");
+      btn.textContent = fmtTime(slot.time);
+      btn.style.animationDelay = `${idx * 0.04}s`;
       btn.setAttribute("role", "option");
-      btn.setAttribute("aria-selected", state.selectedSlot === slot.time ? "true" : "false");
+      btn.setAttribute("aria-selected", state.slot === slot.time ? "true" : "false");
       btn.addEventListener("click", () => selectSlot(slot.time));
-      dom.timeslotsGrid.appendChild(btn);
+      dom.timesGrid.appendChild(btn);
     });
 
-    show(dom.timeslotsGrid);
+    show(dom.timesGrid);
   }
 
-  /* ─── Render: Booking Summary ─── */
-  function renderBookingSummary() {
-    if (!state.selectedSlot || !state.selectedEventId) {
-      hide(dom.bookingSection);
+  /* ─── Render: Confirm Bar ─── */
+  function renderConfirm() {
+    if (!state.slot || !state.eventId) {
+      hide(dom.confirmBar);
       return;
     }
 
-    const cfg = CONFIG.eventTypes[state.selectedEventId];
-    const slotDate = new Date(state.selectedSlot);
-    const durLabel = state.selectedDuration >= 60
-      ? `${state.selectedDuration / 60} hour${state.selectedDuration > 60 ? "s" : ""}`
-      : `${state.selectedDuration} minutes`;
+    const cfg = CONFIG.eventTypes[state.eventId];
+    const slotDate = new Date(state.slot);
+    const durLabel = state.duration >= 60
+      ? `${state.duration / 60} hour${state.duration > 60 ? "s" : ""}`
+      : `${state.duration} minutes`;
 
-    dom.bookingSummary.innerHTML = `
-      <p class="booking-summary__type">${cfg.shortTitle}</p>
-      <p class="booking-summary__datetime">${formatDateLong(slotDate)} at ${formatTime(state.selectedSlot)}</p>
-      <p class="booking-summary__duration">${durLabel} &middot; ${getUserTimezone()}</p>
+    dom.confirmDetails.innerHTML = `
+      <p class="confirm__type">${cfg.shortTitle}</p>
+      <p class="confirm__datetime">${fmtDateLong(slotDate)} at ${fmtTime(state.slot)}</p>
+      <p class="confirm__meta">${durLabel} &middot; ${tz().replace(/_/g, " ")}</p>
     `;
 
-    show(dom.bookingSection);
-
-    /* Smooth scroll to booking section */
-    dom.bookingSection.scrollIntoView({ behavior: "smooth", block: "center" });
+    show(dom.confirmBar);
+    dom.confirmBar.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   /* ─── Actions ─── */
-  function selectMeetingType(eventId) {
-    state.selectedEventId = eventId;
-    state.selectedDate = null;
-    state.selectedSlot = null;
+  function selectMeeting(eventId) {
+    state.eventId = eventId;
+    state.date = null;
+    state.slot = null;
 
     const cfg = CONFIG.eventTypes[eventId];
-    state.selectedDuration = cfg.defaultDuration;
+    state.duration = cfg.defaultDuration;
 
-    /* Update active card */
-    dom.meetingCards.forEach((card) => {
-      card.classList.toggle("active", card.dataset.eventId === String(eventId));
+    dom.options.forEach((o) => {
+      o.classList.toggle("option--active", o.dataset.eventId === String(eventId));
     });
 
-    /* Show duration & calendar */
-    renderDurations();
-    show(dom.calendarSection);
-    hide(dom.bookingSection);
-    hide(dom.embedSection);
+    /* Update step numbers based on whether duration step is shown */
+    const hasDurations = cfg.durations.length > 1;
+    dom.dateStepNum.textContent = hasDurations ? "03" : "02";
+    dom.timeStepNum.textContent = hasDurations ? "04" : "03";
 
-    /* Set week and load slots */
-    state.weekStart = getWeekStart(new Date());
+    renderDurations();
+    showStep(dom.stepDate);
+    showStep(dom.stepTime);
+    hide(dom.confirmBar);
+
+    state.weekStart = weekStart(new Date());
     loadWeekSlots();
 
-    /* Scroll to calendar */
-    dom.calendarSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    dom.stepDuration.scrollIntoView
+      ? (hasDurations ? dom.stepDuration : dom.stepDate).scrollIntoView({ behavior: "smooth", block: "start" })
+      : null;
   }
 
-  function selectDate(date) {
-    state.selectedDate = date;
-    state.selectedSlot = null;
+  function selectDate(d) {
+    state.date = d;
+    state.slot = null;
     renderCalendar();
-    renderTimeSlots();
-    hide(dom.bookingSection);
+    renderTimes();
+    hide(dom.confirmBar);
   }
 
-  function selectSlot(slotTime) {
-    state.selectedSlot = slotTime;
-    renderTimeSlots();
-    renderBookingSummary();
+  function selectSlot(time) {
+    state.slot = time;
+    renderTimes();
+    renderConfirm();
   }
 
   async function loadWeekSlots() {
-    if (!state.selectedEventId || !state.weekStart) return;
+    if (!state.eventId || !state.weekStart) return;
 
-    state.loading = true;
-    hide(dom.timeslotsPrompt);
-    hide(dom.timeslotsGrid);
-    hide(dom.timeslotsEmpty);
-    show(dom.timeslotsLoading);
+    hide(dom.timesPrompt);
+    hide(dom.timesGrid);
+    hide(dom.timesEmpty);
+    show(dom.timesLoading);
 
-    const start = state.weekStart;
-    const end = addDays(start, 7);
-
-    const result = await fetchSlots(state.selectedEventId, start, end);
-    state.loading = false;
+    const result = await fetchSlots(state.eventId, state.weekStart, addDays(state.weekStart, 7));
 
     if (result === null) {
-      /* API unavailable — show Cal.com embed fallback */
-      hide(dom.timeslotsLoading);
+      hide(dom.timesLoading);
       showEmbedFallback();
       return;
     }
 
     state.slots = result;
-
-    /* Re-render */
     renderCalendar();
 
-    /* If a date was selected, check if it still has slots */
-    if (state.selectedDate) {
-      renderTimeSlots();
+    if (state.date) {
+      renderTimes();
     } else {
-      hide(dom.timeslotsLoading);
-      show(dom.timeslotsPrompt);
+      hide(dom.timesLoading);
+      show(dom.timesPrompt);
     }
   }
 
-  function navigateWeek(delta) {
+  function navWeek(delta) {
     state.weekStart = addDays(state.weekStart, delta * 7);
-    state.selectedDate = null;
-    state.selectedSlot = null;
-    hide(dom.bookingSection);
+    state.date = null;
+    state.slot = null;
+    hide(dom.confirmBar);
     loadWeekSlots();
   }
 
-  function openCalBooking() {
-    if (!state.selectedSlot || !state.selectedEventId) return;
+  function openBooking() {
+    if (!state.slot || !state.eventId) return;
 
-    const cfg = CONFIG.eventTypes[state.selectedEventId];
-    const slotDate = state.selectedSlot.split("T")[0];
+    const cfg = CONFIG.eventTypes[state.eventId];
+    const slotDate = state.slot.split("T")[0];
     const calLink = `${CONFIG.calUsername}/${cfg.slug}`;
+    const params = new URLSearchParams({ date: slotDate, slot: state.slot });
+    if (state.duration) params.set("duration", state.duration);
 
-    /* Build Cal.com URL params for pre-selection */
-    const params = new URLSearchParams({
-      date: slotDate,
-      slot: state.selectedSlot,
-    });
+    /* Build recap */
+    const slotObj = new Date(state.slot);
+    const durLabel = state.duration >= 60
+      ? `${state.duration / 60}hr${state.duration > 60 ? "s" : ""}`
+      : `${state.duration}min`;
 
-    if (state.selectedDuration) {
-      params.set("duration", state.selectedDuration);
-    }
+    dom.bookingRecap.innerHTML = `
+      <div class="booking-recap__icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </div>
+      <div class="booking-recap__text">
+        <p class="booking-recap__type">${cfg.shortTitle}</p>
+        <p class="booking-recap__datetime">${fmtDateLong(slotObj)} at ${fmtTime(state.slot)} &middot; ${durLabel}</p>
+      </div>
+    `;
 
     /* Use Cal.com embed modal */
     if (window.Cal && window.Cal.ns && window.Cal.ns.booking) {
@@ -460,51 +437,39 @@
         config: {
           theme: "dark",
           layout: "month_view",
-          styles: {
-            branding: { brandColor: "#c9a84c" },
-          },
+          styles: { branding: { brandColor: "#c4a265" } },
         },
       });
     } else {
-      /* Fallback: open Cal.com in new tab */
       window.open(`${CONFIG.calOrigin}/${calLink}?${params.toString()}`, "_blank");
     }
   }
 
   function resetSelection() {
-    state.selectedDate = null;
-    state.selectedSlot = null;
-    hide(dom.bookingSection);
+    state.date = null;
+    state.slot = null;
+    hide(dom.confirmBar);
     renderCalendar();
-    renderTimeSlots();
-    dom.calendarSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    renderTimes();
+    dom.stepDate.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  /* ─── Initialization ─── */
+  /* ─── Init ─── */
   function init() {
-    /* Footer year */
-    dom.footerYear.textContent = new Date().getFullYear();
+    dom.year.textContent = new Date().getFullYear();
+    dom.tzLabel.textContent = tz().replace(/_/g, " ");
 
-    /* Timezone badge */
-    dom.tzBadge.textContent = getUserTimezone().replace(/_/g, " ");
-
-    /* Meeting card clicks */
-    dom.meetingCards.forEach((card) => {
-      card.addEventListener("click", () => {
-        selectMeetingType(parseInt(card.dataset.eventId, 10));
-      });
+    dom.options.forEach((o) => {
+      o.addEventListener("click", () => selectMeeting(parseInt(o.dataset.eventId, 10)));
     });
 
-    /* Calendar navigation */
-    dom.prevWeek.addEventListener("click", () => navigateWeek(-1));
-    dom.nextWeek.addEventListener("click", () => navigateWeek(1));
-
-    /* Booking buttons */
-    dom.bookBtn.addEventListener("click", openCalBooking);
-    dom.backBtn.addEventListener("click", resetSelection);
+    dom.prevWeek.addEventListener("click", () => navWeek(-1));
+    dom.nextWeek.addEventListener("click", () => navWeek(1));
+    dom.bookBtn.addEventListener("click", openBooking);
+    dom.resetBtn.addEventListener("click", resetSelection);
+    dom.backBtn.addEventListener("click", () => switchView(dom.viewSelection));
   }
 
-  /* ─── Start ─── */
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
   } else {
