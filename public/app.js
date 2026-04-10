@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════
-   Connect with DA — Application Logic v2
+   Connect with DA — Application Logic v3
    "The Private Chamber" — Editorial-luxury scheduling
    ═══════════════════════════════════════════════════ */
 
@@ -11,6 +11,8 @@
     calUsername: "meetwithda",
     calOrigin: "https://cal.com",
     apiBase: "/api",
+    daTz: "America/Los_Angeles",
+    maxWeeksForward: 12,
     eventTypes: {
       454747: {
         slug: "discovery",
@@ -49,27 +51,30 @@
     viewSelection: $("#viewSelection"),
     viewBooking: $("#viewBooking"),
     viewEmbed: $("#viewEmbed"),
-    options: $$("#meetingOptions .option"),
+    options: $$("#meetingOptions .option-card"),
     stepDuration: $("#stepDuration"),
     durationPills: $("#durationPills"),
-    stepDate: $("#stepDate"),
+    stepDateTime: $("#stepDateTime"),
     dateStepNum: $("#dateStepNum"),
     tzLabel: $("#tzLabel"),
     calMonth: $("#calMonth"),
     calStrip: $("#calStrip"),
     prevWeek: $("#prevWeek"),
     nextWeek: $("#nextWeek"),
-    stepTime: $("#stepTime"),
-    timeStepNum: $("#timeStepNum"),
-    dateBadge: $("#dateBadge"),
     timesLoading: $("#timesLoading"),
     timesPrompt: $("#timesPrompt"),
     timesGrid: $("#timesGrid"),
     timesEmpty: $("#timesEmpty"),
+    tzCompare: $("#tzCompare"),
+    tzVisitorLabel: $("#tzVisitorLabel"),
+    tzVisitorTime: $("#tzVisitorTime"),
+    tzVisitorDay: $("#tzVisitorDay"),
+    tzDaTime: $("#tzDaTime"),
+    tzDaDay: $("#tzDaDay"),
+    tzOffset: $("#tzOffset"),
     confirmBar: $("#confirmBar"),
-    confirmDetails: $("#confirmDetails"),
+    confirmSummary: $("#confirmSummary"),
     bookBtn: $("#bookBtn"),
-    resetBtn: $("#resetBtn"),
     backBtn: $("#backBtn"),
     bookingRecap: $("#bookingRecap"),
     calEmbedWrap: $("#calEmbedWrap"),
@@ -84,13 +89,44 @@
     "July", "August", "September", "October", "November", "December",
   ];
 
-  function tz() {
+  function visitorTz() {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone; }
-    catch (_) { return "America/Los_Angeles"; }
+    catch (_) { return "America/New_York"; }
+  }
+
+  function tzAbbrev(tz) {
+    try {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz,
+        timeZoneName: "short",
+      }).formatToParts(new Date());
+      const tzPart = parts.find((p) => p.type === "timeZoneName");
+      return tzPart ? tzPart.value : tz.split("/").pop().replace(/_/g, " ");
+    } catch (_) {
+      return tz.split("/").pop().replace(/_/g, " ");
+    }
   }
 
   function fmtTime(iso) {
     return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
+  }
+
+  function fmtTimeInTz(iso, tz) {
+    return new Date(iso).toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: tz,
+    });
+  }
+
+  function fmtDateInTz(iso, tz) {
+    return new Date(iso).toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      timeZone: tz,
+    });
   }
 
   function fmtDateLong(d) {
@@ -105,7 +141,7 @@
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   }
 
-  function weekStart(d) {
+  function getWeekStart(d) {
     const w = new Date(d);
     w.setDate(w.getDate() - w.getDay());
     w.setHours(0, 0, 0, 0);
@@ -143,7 +179,10 @@
 
   /* ─── API ─── */
   async function fetchSlots(eventTypeId, start, end) {
-    const url = `${CONFIG.apiBase}/slots?eventTypeId=${eventTypeId}&startTime=${start.toISOString()}&endTime=${end.toISOString()}&duration=${state.duration || ""}`;
+    let url = `${CONFIG.apiBase}/slots?eventTypeId=${eventTypeId}&startTime=${start.toISOString()}&endTime=${end.toISOString()}`;
+    if (state.duration) {
+      url += `&duration=${state.duration}`;
+    }
     try {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -176,7 +215,7 @@
         });
         Cal.ns[ns]("ui", { theme: "dark", styles: { branding: { brandColor: "#c4a265" } } });
       } else {
-        dom.calEmbedInline.innerHTML = `<a href="${CONFIG.calOrigin}/${CONFIG.calUsername}/${cfg.slug}" target="_blank" class="btn-gold" style="display:inline-block;text-align:center;text-decoration:none;margin-top:1rem">Open Booking Page</a>`;
+        dom.calEmbedInline.innerHTML = `<a href="${CONFIG.calOrigin}/${CONFIG.calUsername}/${cfg.slug}" target="_blank" class="btn-confirm" style="display:inline-flex;text-align:center;text-decoration:none;margin-top:1rem">Open Booking Page</a>`;
       }
       state.embedLoaded[key] = true;
     }
@@ -208,6 +247,7 @@
         state.slot = null;
         renderDurations();
         hide(dom.confirmBar);
+        hide(dom.tzCompare);
         loadWeekSlots();
       });
       dom.durationPills.appendChild(btn);
@@ -228,7 +268,10 @@
         ? `${MONTHS[ws.getMonth()].slice(0,3)} – ${MONTHS[we.getMonth()]} ${we.getFullYear()}`
         : `${MONTHS[ws.getMonth()].slice(0,3)} ${ws.getFullYear()} – ${MONTHS[we.getMonth()].slice(0,3)} ${we.getFullYear()}`;
 
-    dom.prevWeek.disabled = ws <= weekStart(new Date());
+    /* Navigation limits */
+    dom.prevWeek.disabled = ws <= getWeekStart(new Date());
+    const maxWeek = addDays(getWeekStart(new Date()), CONFIG.maxWeeksForward * 7);
+    dom.nextWeek.disabled = ws >= maxWeek;
 
     dom.calStrip.innerHTML = "";
     for (let i = 0; i < 7; i++) {
@@ -272,8 +315,6 @@
       return;
     }
 
-    dom.dateBadge.textContent = fmtDateShort(state.date);
-
     const k = dateKey(state.date);
     const daySlots = state.slots[k] || [];
 
@@ -304,6 +345,67 @@
     show(dom.timesGrid);
   }
 
+  /* ─── Render: Timezone Comparison ─── */
+  function renderTimezone() {
+    if (!state.slot) {
+      hide(dom.tzCompare);
+      return;
+    }
+
+    const vTz = visitorTz();
+    const dTz = CONFIG.daTz;
+
+    /* Display times in each timezone */
+    const visitorTime = fmtTimeInTz(state.slot, vTz);
+    const daTime = fmtTimeInTz(state.slot, dTz);
+    const visitorDateStr = fmtDateInTz(state.slot, vTz);
+    const daDateStr = fmtDateInTz(state.slot, dTz);
+
+    /* Timezone abbreviations */
+    const vAbbrev = tzAbbrev(vTz);
+    const dAbbrev = tzAbbrev(dTz);
+
+    dom.tzVisitorLabel.textContent = `YOUR TIME (${vAbbrev})`;
+    dom.tzVisitorTime.textContent = visitorTime;
+    dom.tzDaTime.textContent = daTime;
+
+    /* Calculate offset */
+    const slotDate = new Date(state.slot);
+    const vOffset = getUtcOffset(vTz, slotDate);
+    const dOffset = getUtcOffset(dTz, slotDate);
+    const diff = Math.abs(vOffset - dOffset);
+    const diffHrs = Math.floor(diff);
+    const diffMins = Math.round((diff - diffHrs) * 60);
+    dom.tzOffset.textContent = diffMins > 0 ? `${diffHrs}h ${diffMins}m` : `${diffHrs} hr`;
+
+    /* Show day labels if dates differ */
+    if (visitorDateStr !== daDateStr) {
+      dom.tzVisitorDay.textContent = visitorDateStr;
+      dom.tzDaDay.textContent = daDateStr;
+      show(dom.tzVisitorDay);
+      show(dom.tzDaDay);
+    } else {
+      hide(dom.tzVisitorDay);
+      hide(dom.tzDaDay);
+    }
+
+    /* Don't show comparison if same timezone */
+    if (vTz === dTz) {
+      hide(dom.tzCompare);
+      return;
+    }
+
+    show(dom.tzCompare);
+  }
+
+  function getUtcOffset(tz, date) {
+    const utcStr = date.toLocaleString("en-US", { timeZone: "UTC" });
+    const tzStr = date.toLocaleString("en-US", { timeZone: tz });
+    const utcDate = new Date(utcStr);
+    const tzDate = new Date(tzStr);
+    return (tzDate - utcDate) / (1000 * 60 * 60);
+  }
+
   /* ─── Render: Confirm Bar ─── */
   function renderConfirm() {
     if (!state.slot || !state.eventId) {
@@ -317,10 +419,10 @@
       ? `${state.duration / 60} hour${state.duration > 60 ? "s" : ""}`
       : `${state.duration} minutes`;
 
-    dom.confirmDetails.innerHTML = `
+    dom.confirmSummary.innerHTML = `
       <p class="confirm__type">${cfg.shortTitle}</p>
       <p class="confirm__datetime">${fmtDateLong(slotDate)} at ${fmtTime(state.slot)}</p>
-      <p class="confirm__meta">${durLabel} &middot; ${tz().replace(/_/g, " ")}</p>
+      <p class="confirm__meta">${durLabel} &middot; ${visitorTz().replace(/_/g, " ")}</p>
     `;
 
     show(dom.confirmBar);
@@ -337,23 +439,22 @@
     state.duration = cfg.defaultDuration;
 
     dom.options.forEach((o) => {
-      o.classList.toggle("option--active", o.dataset.eventId === String(eventId));
+      o.classList.toggle("option-card--active", o.dataset.eventId === String(eventId));
     });
 
     /* Update step numbers based on whether duration step is shown */
     const hasDurations = cfg.durations.length > 1;
     dom.dateStepNum.textContent = hasDurations ? "03" : "02";
-    dom.timeStepNum.textContent = hasDurations ? "04" : "03";
 
     renderDurations();
-    showStep(dom.stepDate);
-    showStep(dom.stepTime);
+    showStep(dom.stepDateTime);
     hide(dom.confirmBar);
+    hide(dom.tzCompare);
 
-    state.weekStart = weekStart(new Date());
+    state.weekStart = getWeekStart(new Date());
     loadWeekSlots();
 
-    (hasDurations ? dom.stepDuration : dom.stepDate).scrollIntoView({ behavior: "smooth", block: "start" });
+    (hasDurations ? dom.stepDuration : dom.stepDateTime).scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function selectDate(d) {
@@ -362,11 +463,13 @@
     renderCalendar();
     renderTimes();
     hide(dom.confirmBar);
+    hide(dom.tzCompare);
   }
 
   function selectSlot(time) {
     state.slot = time;
     renderTimes();
+    renderTimezone();
     renderConfirm();
   }
 
@@ -402,6 +505,7 @@
     state.date = null;
     state.slot = null;
     hide(dom.confirmBar);
+    hide(dom.tzCompare);
     loadWeekSlots();
   }
 
@@ -430,9 +534,14 @@
       </div>
     `;
 
-    /* Use Cal.com embed modal */
+    /* Switch to booking view */
+    switchView(dom.viewBooking);
+
+    /* Use Cal.com embed inline on booking page */
     if (window.Cal && window.Cal.ns && window.Cal.ns.booking) {
-      window.Cal.ns.booking("modal", {
+      dom.calEmbedWrap.innerHTML = "";
+      window.Cal.ns.booking("inline", {
+        elementOrSelector: "#calEmbedWrap",
         calLink: `${calLink}?${params.toString()}`,
         config: {
           theme: "dark",
@@ -445,19 +554,10 @@
     }
   }
 
-  function resetSelection() {
-    state.date = null;
-    state.slot = null;
-    hide(dom.confirmBar);
-    renderCalendar();
-    renderTimes();
-    dom.stepDate.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
   /* ─── Init ─── */
   function init() {
     dom.year.textContent = new Date().getFullYear();
-    dom.tzLabel.textContent = tz().replace(/_/g, " ");
+    dom.tzLabel.textContent = visitorTz().replace(/_/g, " ");
 
     dom.options.forEach((o) => {
       o.addEventListener("click", () => selectMeeting(parseInt(o.dataset.eventId, 10)));
@@ -466,7 +566,6 @@
     dom.prevWeek.addEventListener("click", () => navWeek(-1));
     dom.nextWeek.addEventListener("click", () => navWeek(1));
     dom.bookBtn.addEventListener("click", openBooking);
-    dom.resetBtn.addEventListener("click", resetSelection);
     dom.backBtn.addEventListener("click", () => switchView(dom.viewSelection));
   }
 

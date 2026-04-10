@@ -30,11 +30,12 @@
         <div class="hero__sigil" aria-hidden="true">
           <span>DA</span>
         </div>
-        <div class="rule" aria-hidden="true"><span class="rule__diamond">&#9670;</span></div>
         <p class="hero__kicker">Private Scheduling</p>
         <h1 class="hero__name">David Alexander</h1>
         <p class="hero__intro">Select a meeting type and choose a time that works best for you.</p>
       </header>
+
+      <div class="rule" aria-hidden="true"><span class="rule__diamond">&#9670;</span></div>
 
       <!-- Step 1 — Meeting Type -->
       <section class="step" id="stepMeeting" aria-label="Select meeting type">
@@ -43,41 +44,32 @@
           <h2 class="step__title">Meeting Type</h2>
         </div>
 
-        <div class="options" id="meetingOptions">
-          <button class="option" data-event-id="454747" data-slug="discovery" data-durations="60,120,180" data-default-duration="180" aria-label="Discovery Call — Paid Consultation">
-            <div class="option__accent"></div>
-            <div class="option__icon">
+        <div class="options-grid" id="meetingOptions">
+          <button class="option-card" data-event-id="454747" data-slug="discovery" data-durations="60,120,180" data-default-duration="180" aria-label="Discovery Call — Paid Consultation">
+            <div class="option-card__icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94"/>
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                <polygon points="23 7 16 12 23 17 23 7"/>
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
               </svg>
             </div>
-            <div class="option__body">
-              <h3 class="option__name">Discovery Call</h3>
-              <p class="option__meta">3 Total Hours &middot; 1 &ndash; 3 Sessions</p>
-              <p class="option__desc">Deep-dive consultation to explore partnership opportunities and strategic alignment.</p>
-            </div>
-            <span class="option__badge option__badge--reveal" data-reveal="$25,000">
-              <span class="option__badge-default">Paid</span>
-              <span class="option__badge-hover">$25,000</span>
+            <h3 class="option-card__name">Discovery Meeting</h3>
+            <p class="option-card__meta">For new introductions and exploration.</p>
+            <span class="option-card__badge option-card__badge--reveal">
+              <span class="option-card__badge-default">Paid</span>
+              <span class="option-card__badge-hover">$25,000</span>
             </span>
           </button>
 
-          <button class="option" data-event-id="454745" data-slug="online-meeting" data-durations="60,120" data-default-duration="120" aria-label="Online Meeting — By Invitation">
-            <div class="option__accent"></div>
-            <div class="option__icon">
+          <button class="option-card" data-event-id="454745" data-slug="online-meeting" data-durations="60,120" data-default-duration="120" aria-label="Online Meeting — By Invitation">
+            <div class="option-card__icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                <line x1="8" y1="21" x2="16" y2="21"/>
-                <line x1="12" y1="17" x2="12" y2="21"/>
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </svg>
             </div>
-            <div class="option__body">
-              <h3 class="option__name">Online Meeting</h3>
-              <p class="option__meta">1 &ndash; 2 Hours &middot; By Invitation</p>
-              <p class="option__desc">Private virtual meeting for invited participants. Secure video conference link provided upon confirmation.</p>
-            </div>
-            <span class="option__badge option__badge--subtle">By Invitation</span>
+            <h3 class="option-card__name">By-Invitation Only</h3>
+            <p class="option-card__meta">Exclusive session for invited participants.</p>
+            <span class="option-card__badge option-card__badge--subtle">By Invitation</span>
           </button>
         </div>
       </section>
@@ -91,62 +83,98 @@
         <div class="pills" id="durationPills"></div>
       </section>
 
-      <!-- Step 3 — Date -->
-      <section class="step step--collapsed" id="stepDate" aria-label="Select date">
+      <!-- Step 3 — Select Date & Time (merged) -->
+      <section class="step step--collapsed" id="stepDateTime" aria-label="Select date and time">
         <div class="step__head">
           <span class="step__num" id="dateStepNum">02</span>
-          <h2 class="step__title">Select Date</h2>
+          <h2 class="step__title">Select Date &amp; Time</h2>
           <span class="step__badge" id="tzLabel"></span>
         </div>
 
-        <div class="cal__nav">
-          <button class="cal__arrow" id="prevWeek" aria-label="Previous week" disabled>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <span class="cal__month" id="calMonth"></span>
-          <button class="cal__arrow" id="nextWeek" aria-label="Next week">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
+        <!-- Calendar container -->
+        <div class="cal-container">
+          <div class="cal__nav">
+            <button class="cal__arrow" id="prevWeek" aria-label="Previous week" disabled>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span class="cal__month" id="calMonth"></span>
+            <button class="cal__arrow" id="nextWeek" aria-label="Next week">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+          <div class="cal__strip" id="calStrip" role="listbox" aria-label="Available dates"></div>
         </div>
-        <div class="cal__strip" id="calStrip" role="listbox" aria-label="Available dates"></div>
+
+        <!-- Time slots (inline, below calendar) -->
+        <div class="times-section" id="timesSection">
+          <div class="times-loading hidden" id="timesLoading">
+            <div class="spinner"></div>
+            <span>Checking availability&hellip;</span>
+          </div>
+          <p class="times-prompt" id="timesPrompt">Select a date above to view available times</p>
+          <div class="times-grid hidden" id="timesGrid" role="listbox" aria-label="Available times"></div>
+          <p class="times-empty hidden" id="timesEmpty">No available times on this date. Try another day.</p>
+        </div>
       </section>
 
-      <!-- Step 4 — Time -->
-      <section class="step step--collapsed" id="stepTime" aria-label="Select time">
-        <div class="step__head">
-          <span class="step__num" id="timeStepNum">03</span>
-          <h2 class="step__title">Select Time</h2>
-          <span class="step__badge" id="dateBadge"></span>
+      <!-- Timezone Comparison (shown when time selected) -->
+      <section class="tz-compare hidden" id="tzCompare" aria-label="Timezone comparison">
+        <h3 class="tz-compare__title">Timezone Comparison</h3>
+        <div class="tz-compare__card">
+          <div class="tz-compare__col">
+            <span class="tz-compare__label" id="tzVisitorLabel">YOUR TIME</span>
+            <span class="tz-compare__time" id="tzVisitorTime"></span>
+            <span class="tz-compare__day hidden" id="tzVisitorDay"></span>
+          </div>
+          <div class="tz-compare__divider">
+            <div class="tz-compare__line"></div>
+            <span class="tz-compare__offset" id="tzOffset"></span>
+            <div class="tz-compare__line"></div>
+          </div>
+          <div class="tz-compare__col">
+            <span class="tz-compare__label">DA TIME (PT)</span>
+            <span class="tz-compare__time" id="tzDaTime"></span>
+            <span class="tz-compare__day hidden" id="tzDaDay"></span>
+          </div>
         </div>
-
-        <div class="times-loading hidden" id="timesLoading">
-          <div class="spinner"></div>
-          <span>Checking availability&hellip;</span>
-        </div>
-        <p class="times-prompt" id="timesPrompt">Select a date above to view available times</p>
-        <div class="times-grid hidden" id="timesGrid" role="listbox" aria-label="Available times"></div>
-        <p class="times-empty hidden" id="timesEmpty">No available times on this date. Try another day.</p>
       </section>
 
-      <!-- Confirm Bar -->
+      <!-- Confirm Summary + Button -->
       <div class="confirm hidden" id="confirmBar">
-        <div class="confirm__card">
-          <div class="confirm__details" id="confirmDetails"></div>
-          <button class="btn-gold" id="bookBtn">Continue to Book</button>
-          <button class="btn-ghost" id="resetBtn">Change Selection</button>
-        </div>
+        <div class="confirm__summary" id="confirmSummary"></div>
+        <button class="btn-confirm" id="bookBtn">
+          Confirm Booking
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
       </div>
+
+      <!-- Contact -->
+      <section class="contact" aria-label="Contact information">
+        <div class="rule" aria-hidden="true"><span class="rule__diamond">&#9670;</span></div>
+        <h3 class="contact__name">David Alexander</h3>
+        <p class="contact__role">Data Image International</p>
+        <a href="mailto:dataimageintl@gmail.com" class="contact__link">dataimageintl@gmail.com</a>
+      </section>
 
     </div>
 
-    <!-- ═══════ VIEW 2: BOOKING ═══════ -->
+    <!-- ═══════ VIEW 2: BOOKING PAGE ═══════ -->
     <div class="view" id="viewBooking">
       <button class="back-link" id="backBtn">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
         Back to selection
       </button>
+
+      <header class="booking-header">
+        <h2 class="booking-header__title">Complete Your Booking</h2>
+        <p class="booking-header__sub">Review your selection and provide your details below.</p>
+      </header>
+
       <div class="booking-recap" id="bookingRecap"></div>
-      <div class="embed-wrap" id="calEmbedWrap"></div>
+
+      <div class="booking-embed">
+        <div id="calEmbedWrap" class="embed-wrap"></div>
+      </div>
     </div>
 
     <!-- ═══════ Cal.com Embed Fallback ═══════ -->
@@ -158,14 +186,6 @@
         <div id="calEmbedInline" class="embed-inline"></div>
       </section>
     </div>
-
-    <!-- Contact -->
-    <section class="contact" aria-label="Contact information">
-      <div class="rule" aria-hidden="true"><span class="rule__diamond">&#9670;</span></div>
-      <h3 class="contact__name">David Alexander</h3>
-      <p class="contact__role">Data Image International</p>
-      <a href="mailto:dataimageintl@gmail.com" class="contact__link">dataimageintl@gmail.com</a>
-    </section>
 
     <footer class="footer">
       &copy; <span id="year"></span> David Alexander. All rights reserved.
