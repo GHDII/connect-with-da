@@ -133,7 +133,7 @@ async function handleSlots(url, env) {
     });
 
     const data = await calRes.json();
-    return jsonResponse(data, calRes.status);
+    return jsonResponse(data, calRes.status, calRes.ok);
   } catch {
     return jsonResponse(
       { status: "error", message: "Failed to reach Cal.com API" },
