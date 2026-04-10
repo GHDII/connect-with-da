@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════
-   Connect with DA — Application Logic v3
-   "The Private Chamber" — Editorial-luxury scheduling
+   Connect with DA — Application Logic v4
+   Premium scheduling — closely aligned with reference
    ═══════════════════════════════════════════════════ */
 
 (function () {
@@ -20,6 +20,8 @@
         shortTitle: "Discovery Call",
         durations: [60, 120, 180],
         defaultDuration: 180,
+        paid: true,
+        price: "$25,000",
       },
       454745: {
         slug: "online-meeting",
@@ -27,6 +29,7 @@
         shortTitle: "Online Meeting",
         durations: [60, 120],
         defaultDuration: 120,
+        paid: false,
       },
     },
   };
@@ -49,18 +52,19 @@
 
   const dom = {
     viewSelection: $("#viewSelection"),
+    viewPayment: $("#viewPayment"),
     viewBooking: $("#viewBooking"),
     viewEmbed: $("#viewEmbed"),
     options: $$("#meetingOptions .option-card"),
     stepDuration: $("#stepDuration"),
     durationPills: $("#durationPills"),
     stepDateTime: $("#stepDateTime"),
-    dateStepNum: $("#dateStepNum"),
-    tzLabel: $("#tzLabel"),
     calMonth: $("#calMonth"),
     calStrip: $("#calStrip"),
     prevWeek: $("#prevWeek"),
     nextWeek: $("#nextWeek"),
+    timesHeading: $("#timesHeading"),
+    timesDateLabel: $("#timesDateLabel"),
     timesLoading: $("#timesLoading"),
     timesPrompt: $("#timesPrompt"),
     timesGrid: $("#timesGrid"),
@@ -68,14 +72,16 @@
     tzCompare: $("#tzCompare"),
     tzVisitorLabel: $("#tzVisitorLabel"),
     tzVisitorTime: $("#tzVisitorTime"),
-    tzVisitorDay: $("#tzVisitorDay"),
+    tzVisitorDate: $("#tzVisitorDate"),
     tzDaTime: $("#tzDaTime"),
-    tzDaDay: $("#tzDaDay"),
+    tzDaDate: $("#tzDaDate"),
     tzOffset: $("#tzOffset"),
     confirmBar: $("#confirmBar"),
-    confirmSummary: $("#confirmSummary"),
     bookBtn: $("#bookBtn"),
     backBtn: $("#backBtn"),
+    backFromPayment: $("#backFromPayment"),
+    payBtn: $("#payBtn"),
+    paymentRecap: $("#paymentRecap"),
     bookingRecap: $("#bookingRecap"),
     calEmbedWrap: $("#calEmbedWrap"),
     calEmbedInline: $("#calEmbedInline"),
@@ -137,6 +143,10 @@
     return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
   }
 
+  function fmtDateUppercase(d) {
+    return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }).toUpperCase();
+  }
+
   function dateKey(d) {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   }
@@ -155,23 +165,23 @@
   function show(el) { if (el) { el.classList.remove("hidden"); } }
   function hide(el) { if (el) { el.classList.add("hidden"); } }
 
-  function showStep(el) {
+  function showSection(el) {
     if (el) {
-      el.classList.remove("step--collapsed");
-      el.classList.add("step--visible");
+      el.classList.remove("section--hidden");
+      el.classList.add("section--visible");
     }
   }
 
-  function hideStep(el) {
+  function hideSection(el) {
     if (el) {
-      el.classList.add("step--collapsed");
-      el.classList.remove("step--visible");
+      el.classList.add("section--hidden");
+      el.classList.remove("section--visible");
     }
   }
 
   function switchView(target) {
-    [dom.viewSelection, dom.viewBooking, dom.viewEmbed].forEach((v) => {
-      v.classList.remove("view--active");
+    [dom.viewSelection, dom.viewPayment, dom.viewBooking, dom.viewEmbed].forEach((v) => {
+      if (v) v.classList.remove("view--active");
     });
     target.classList.add("view--active");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -227,7 +237,7 @@
   function renderDurations() {
     const cfg = CONFIG.eventTypes[state.eventId];
     if (!cfg || cfg.durations.length <= 1) {
-      hideStep(dom.stepDuration);
+      hideSection(dom.stepDuration);
       state.duration = cfg ? cfg.defaultDuration : null;
       return;
     }
@@ -253,7 +263,7 @@
       dom.durationPills.appendChild(btn);
     });
 
-    showStep(dom.stepDuration);
+    showSection(dom.stepDuration);
   }
 
   /* ─── Render: Calendar Strip ─── */
@@ -265,8 +275,8 @@
     dom.calMonth.textContent = ws.getMonth() === we.getMonth()
       ? `${MONTHS[ws.getMonth()]} ${ws.getFullYear()}`
       : ws.getFullYear() === we.getFullYear()
-        ? `${MONTHS[ws.getMonth()].slice(0,3)} – ${MONTHS[we.getMonth()]} ${we.getFullYear()}`
-        : `${MONTHS[ws.getMonth()].slice(0,3)} ${ws.getFullYear()} – ${MONTHS[we.getMonth()].slice(0,3)} ${we.getFullYear()}`;
+        ? `${MONTHS[ws.getMonth()].slice(0,3)} \u2013 ${MONTHS[we.getMonth()]} ${we.getFullYear()}`
+        : `${MONTHS[ws.getMonth()].slice(0,3)} ${ws.getFullYear()} \u2013 ${MONTHS[we.getMonth()].slice(0,3)} ${we.getFullYear()}`;
 
     /* Navigation limits */
     dom.prevWeek.disabled = ws <= getWeekStart(new Date());
@@ -294,7 +304,6 @@
       cell.innerHTML = `
         <span class="day__label">${DAYS[d.getDay()]}</span>
         <span class="day__num">${d.getDate()}</span>
-        <span class="day__dot"></span>
       `;
 
       if (avail) {
@@ -312,6 +321,7 @@
       hide(dom.timesGrid);
       hide(dom.timesEmpty);
       hide(dom.timesLoading);
+      hide(dom.timesHeading);
       return;
     }
 
@@ -323,11 +333,17 @@
 
     if (daySlots.length === 0) {
       hide(dom.timesGrid);
+      hide(dom.timesHeading);
       show(dom.timesEmpty);
       return;
     }
 
     hide(dom.timesEmpty);
+
+    /* Show "Select Time" heading with date label */
+    dom.timesDateLabel.textContent = fmtDateUppercase(state.date);
+    show(dom.timesHeading);
+
     dom.timesGrid.innerHTML = "";
 
     daySlots.forEach((slot, idx) => {
@@ -363,11 +379,14 @@
 
     /* Timezone abbreviations */
     const vAbbrev = tzAbbrev(vTz);
-    const dAbbrev = tzAbbrev(dTz);
 
     dom.tzVisitorLabel.textContent = `YOUR TIME (${vAbbrev})`;
     dom.tzVisitorTime.textContent = visitorTime;
     dom.tzDaTime.textContent = daTime;
+
+    /* Show dates */
+    dom.tzVisitorDate.textContent = visitorDateStr;
+    dom.tzDaDate.textContent = daDateStr;
 
     /* Calculate offset */
     const slotDate = new Date(state.slot);
@@ -377,17 +396,6 @@
     const diffHrs = Math.floor(diff);
     const diffMins = Math.round((diff - diffHrs) * 60);
     dom.tzOffset.textContent = diffMins > 0 ? `${diffHrs}h ${diffMins}m` : `${diffHrs} hr`;
-
-    /* Show day labels if dates differ */
-    if (visitorDateStr !== daDateStr) {
-      dom.tzVisitorDay.textContent = visitorDateStr;
-      dom.tzDaDay.textContent = daDateStr;
-      show(dom.tzVisitorDay);
-      show(dom.tzDaDay);
-    } else {
-      hide(dom.tzVisitorDay);
-      hide(dom.tzDaDay);
-    }
 
     /* Don't show comparison if same timezone */
     if (vTz === dTz) {
@@ -406,27 +414,23 @@
     return (tzDate - utcDate) / (1000 * 60 * 60);
   }
 
-  /* ─── Render: Confirm Bar ─── */
-  function renderConfirm() {
-    if (!state.slot || !state.eventId) {
-      hide(dom.confirmBar);
-      return;
-    }
-
+  /* ─── Render: Booking Recap Card ─── */
+  function buildRecapHTML() {
     const cfg = CONFIG.eventTypes[state.eventId];
-    const slotDate = new Date(state.slot);
+    const slotObj = new Date(state.slot);
     const durLabel = state.duration >= 60
-      ? `${state.duration / 60} hour${state.duration > 60 ? "s" : ""}`
-      : `${state.duration} minutes`;
+      ? `${state.duration / 60} hr${state.duration > 60 ? "s" : ""}`
+      : `${state.duration} min`;
 
-    dom.confirmSummary.innerHTML = `
-      <p class="confirm__type">${cfg.shortTitle}</p>
-      <p class="confirm__datetime">${fmtDateLong(slotDate)} at ${fmtTime(state.slot)}</p>
-      <p class="confirm__meta">${durLabel} &middot; ${visitorTz().replace(/_/g, " ")}</p>
+    return `
+      <div class="booking-recap__icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </div>
+      <div class="booking-recap__text">
+        <p class="booking-recap__type">${cfg.shortTitle}</p>
+        <p class="booking-recap__datetime">${fmtDateLong(slotObj)} at ${fmtTime(state.slot)} &middot; ${durLabel}</p>
+      </div>
     `;
-
-    show(dom.confirmBar);
-    dom.confirmBar.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   /* ─── Actions ─── */
@@ -442,18 +446,15 @@
       o.classList.toggle("option-card--active", o.dataset.eventId === String(eventId));
     });
 
-    /* Update step numbers based on whether duration step is shown */
-    const hasDurations = cfg.durations.length > 1;
-    dom.dateStepNum.textContent = hasDurations ? "03" : "02";
-
     renderDurations();
-    showStep(dom.stepDateTime);
+    showSection(dom.stepDateTime);
     hide(dom.confirmBar);
     hide(dom.tzCompare);
 
     state.weekStart = getWeekStart(new Date());
     loadWeekSlots();
 
+    const hasDurations = cfg.durations.length > 1;
     (hasDurations ? dom.stepDuration : dom.stepDateTime).scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -470,7 +471,8 @@
     state.slot = time;
     renderTimes();
     renderTimezone();
-    renderConfirm();
+    show(dom.confirmBar);
+    dom.confirmBar.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   async function loadWeekSlots() {
@@ -479,6 +481,7 @@
     hide(dom.timesPrompt);
     hide(dom.timesGrid);
     hide(dom.timesEmpty);
+    hide(dom.timesHeading);
     show(dom.timesLoading);
 
     const result = await fetchSlots(state.eventId, state.weekStart, addDays(state.weekStart, 7));
@@ -513,26 +516,26 @@
     if (!state.slot || !state.eventId) return;
 
     const cfg = CONFIG.eventTypes[state.eventId];
+
+    /* If paid event, go to payment page first */
+    if (cfg.paid) {
+      dom.paymentRecap.innerHTML = buildRecapHTML();
+      switchView(dom.viewPayment);
+      return;
+    }
+
+    /* Otherwise go straight to booking */
+    goToBookingPage();
+  }
+
+  function goToBookingPage() {
+    const cfg = CONFIG.eventTypes[state.eventId];
     const slotDate = state.slot.split("T")[0];
     const calLink = `${CONFIG.calUsername}/${cfg.slug}`;
     const params = new URLSearchParams({ date: slotDate, slot: state.slot });
     if (state.duration) params.set("duration", state.duration);
 
-    /* Build recap */
-    const slotObj = new Date(state.slot);
-    const durLabel = state.duration >= 60
-      ? `${state.duration / 60}hr${state.duration > 60 ? "s" : ""}`
-      : `${state.duration}min`;
-
-    dom.bookingRecap.innerHTML = `
-      <div class="booking-recap__icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      </div>
-      <div class="booking-recap__text">
-        <p class="booking-recap__type">${cfg.shortTitle}</p>
-        <p class="booking-recap__datetime">${fmtDateLong(slotObj)} at ${fmtTime(state.slot)} &middot; ${durLabel}</p>
-      </div>
-    `;
+    dom.bookingRecap.innerHTML = buildRecapHTML();
 
     /* Switch to booking view */
     switchView(dom.viewBooking);
@@ -554,10 +557,56 @@
     }
   }
 
+  function handlePayment() {
+    /* Dummy payment processing — will be replaced with Stripe */
+    const nameInput = $("#cardName");
+    const numberInput = $("#cardNumber");
+    const expiryInput = $("#cardExpiry");
+    const cvcInput = $("#cardCvc");
+
+    /* Basic validation */
+    const fields = [nameInput, numberInput, expiryInput, cvcInput];
+    let valid = true;
+    fields.forEach((f) => {
+      if (!f.value.trim()) {
+        f.style.borderColor = "#e74c3c";
+        valid = false;
+      } else {
+        f.style.borderColor = "";
+      }
+    });
+
+    if (!valid) return;
+
+    /* Simulate payment processing */
+    dom.payBtn.textContent = "Processing...";
+    dom.payBtn.disabled = true;
+
+    setTimeout(() => {
+      dom.payBtn.innerHTML = 'Pay & Continue <span>&rarr;</span>';
+      dom.payBtn.disabled = false;
+      goToBookingPage();
+    }, 1500);
+  }
+
+  /* Card number formatting */
+  function formatCardNumber(input) {
+    let value = input.value.replace(/\D/g, "");
+    value = value.replace(/(\d{4})(?=\d)/g, "$1 ");
+    input.value = value.substring(0, 19);
+  }
+
+  function formatExpiry(input) {
+    let value = input.value.replace(/\D/g, "");
+    if (value.length >= 2) {
+      value = value.substring(0, 2) + " / " + value.substring(2);
+    }
+    input.value = value.substring(0, 7);
+  }
+
   /* ─── Init ─── */
   function init() {
     dom.year.textContent = new Date().getFullYear();
-    dom.tzLabel.textContent = visitorTz().replace(/_/g, " ");
 
     dom.options.forEach((o) => {
       o.addEventListener("click", () => selectMeeting(parseInt(o.dataset.eventId, 10)));
@@ -567,6 +616,24 @@
     dom.nextWeek.addEventListener("click", () => navWeek(1));
     dom.bookBtn.addEventListener("click", openBooking);
     dom.backBtn.addEventListener("click", () => switchView(dom.viewSelection));
+
+    /* Payment page */
+    if (dom.backFromPayment) {
+      dom.backFromPayment.addEventListener("click", () => switchView(dom.viewSelection));
+    }
+    if (dom.payBtn) {
+      dom.payBtn.addEventListener("click", handlePayment);
+    }
+
+    /* Card input formatting */
+    const cardNumberInput = $("#cardNumber");
+    const cardExpiryInput = $("#cardExpiry");
+    if (cardNumberInput) {
+      cardNumberInput.addEventListener("input", () => formatCardNumber(cardNumberInput));
+    }
+    if (cardExpiryInput) {
+      cardExpiryInput.addEventListener("input", () => formatExpiry(cardExpiryInput));
+    }
   }
 
   if (document.readyState === "loading") {
