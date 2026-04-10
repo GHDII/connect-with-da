@@ -759,6 +759,18 @@ body {
   animation: fade-up 0.5s var(--ease-out) both;
 }
 
+/* ─── Cal.com Embed Fallback ─── */
+.embed-section {
+  margin-bottom: var(--space-2xl);
+  animation: fade-up 0.5s var(--ease-out) both;
+}
+
+.cal-embed-inline {
+  min-height: 500px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
 /* ─── Cal.com Embed Overrides ─── */
 :root {
   --cal-brand-color: #c9a84c !important;

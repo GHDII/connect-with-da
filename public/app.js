@@ -37,6 +37,8 @@
     weekStart: null,
     slots: {},
     loading: false,
+    apiAvailable: true,
+    embedLoaded: {},
   };
 
   /* ─── DOM References ─── */
@@ -57,6 +59,8 @@
     timeslotsLoading: $("#timeslotsLoading"),
     timeslotsGrid: $("#timeslotsGrid"),
     timeslotsEmpty: $("#timeslotsEmpty"),
+    embedSection: $("#embedSection"),
+    calEmbedInline: $("#calEmbedInline"),
     bookingSection: $("#bookingSection"),
     bookingSummary: $("#bookingSummary"),
     bookBtn: $("#bookBtn"),
@@ -141,7 +145,6 @@
 
   /* ─── API ─── */
   async function fetchSlots(eventTypeId, startDate, endDate) {
-    const tz = getUserTimezone();
     const url =
       `${CONFIG.apiBase}/slots?eventTypeId=${eventTypeId}` +
       `&startTime=${startDate.toISOString()}` +
@@ -151,11 +154,57 @@
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
+      if (json.status === "error") throw new Error(json.message || "API error");
+      state.apiAvailable = true;
       return json.data?.slots || json.slots || {};
     } catch (err) {
-      console.error("Failed to fetch slots:", err);
-      return {};
+      console.warn("API proxy unavailable, falling back to Cal.com embed:", err.message);
+      state.apiAvailable = false;
+      return null;
     }
+  }
+
+  /* ─── Cal.com Embed Fallback ─── */
+  function showEmbedFallback() {
+    const cfg = CONFIG.eventTypes[state.selectedEventId];
+    if (!cfg) return;
+
+    hide(dom.calendarSection);
+    hide(dom.durationSection);
+    hide(dom.bookingSection);
+
+    const embedKey = `${cfg.slug}-${state.selectedDuration || ""}`;
+    if (!state.embedLoaded[embedKey]) {
+      dom.calEmbedInline.innerHTML = "";
+
+      if (window.Cal && window.Cal.ns) {
+        const nsName = "embed-" + cfg.slug;
+        Cal("init", nsName, { origin: CONFIG.calOrigin });
+        Cal.ns[nsName]("inline", {
+          elementOrSelector: "#calEmbedInline",
+          calLink: `${CONFIG.calUsername}/${cfg.slug}`,
+          config: {
+            theme: "dark",
+            styles: { branding: { brandColor: "#c9a84c" } },
+          },
+        });
+        Cal.ns[nsName]("ui", {
+          theme: "dark",
+          styles: { branding: { brandColor: "#c9a84c" } },
+        });
+      } else {
+        /* Absolute fallback: link to Cal.com */
+        dom.calEmbedInline.innerHTML = `
+          <a href="${CONFIG.calOrigin}/${CONFIG.calUsername}/${cfg.slug}"
+             target="_blank" class="btn-primary" style="display:inline-block;text-align:center;text-decoration:none;margin-top:1rem">
+            Open Booking Page
+          </a>`;
+      }
+      state.embedLoaded[embedKey] = true;
+    }
+
+    show(dom.embedSection);
+    dom.embedSection.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   /* ─── Render: Duration Selector ─── */
@@ -319,6 +368,7 @@
     renderDurations();
     show(dom.calendarSection);
     hide(dom.bookingSection);
+    hide(dom.embedSection);
 
     /* Set week and load slots */
     state.weekStart = getWeekStart(new Date());
@@ -354,8 +404,17 @@
     const start = state.weekStart;
     const end = addDays(start, 7);
 
-    state.slots = await fetchSlots(state.selectedEventId, start, end);
+    const result = await fetchSlots(state.selectedEventId, start, end);
     state.loading = false;
+
+    if (result === null) {
+      /* API unavailable — show Cal.com embed fallback */
+      hide(dom.timeslotsLoading);
+      showEmbedFallback();
+      return;
+    }
+
+    state.slots = result;
 
     /* Re-render */
     renderCalendar();
