@@ -1,0 +1,11 @@
+name = "connect-with-da"
+main = "src/worker.js"
+compatibility_date = "2024-09-23"
+
+# Static assets served from KV via Workers Sites
+[site]
+bucket = "./public"
+
+[vars]
+# CAL_API_KEY is set as a secret via `wrangler secret put CAL_API_KEY`
+# Do NOT put the actual key here
