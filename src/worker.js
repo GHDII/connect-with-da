@@ -68,14 +68,42 @@ async function handleSlots(url, env) {
   if (!eventTypeId || !startTime || !endTime) {
     return jsonResponse(
       { status: "error", message: "Missing required parameters: eventTypeId, startTime, endTime" },
-      400
+      400,
+      false
     );
   }
 
   if (!ALLOWED_EVENT_TYPES.has(eventTypeId)) {
     return jsonResponse(
       { status: "error", message: "Invalid event type" },
-      403
+      403,
+      false
+    );
+  }
+
+  /* Validate ISO 8601 date format and reasonable range */
+  const isoPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+  if (!isoPattern.test(startTime) || !isoPattern.test(endTime)) {
+    return jsonResponse(
+      { status: "error", message: "Invalid date format — ISO 8601 required" },
+      400,
+      false
+    );
+  }
+  const startDate = new Date(startTime);
+  const endDate = new Date(endTime);
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    return jsonResponse(
+      { status: "error", message: "Invalid date values" },
+      400,
+      false
+    );
+  }
+  if (endDate - startDate > 90 * 24 * 60 * 60 * 1000) {
+    return jsonResponse(
+      { status: "error", message: "Date range exceeds 90-day maximum" },
+      400,
+      false
     );
   }
 
@@ -83,7 +111,8 @@ async function handleSlots(url, env) {
   if (!apiKey) {
     return jsonResponse(
       { status: "error", message: "CAL_API_KEY not configured" },
-      500
+      500,
+      false
     );
   }
 
@@ -99,7 +128,6 @@ async function handleSlots(url, env) {
     const calRes = await fetch(calUrl.toString(), {
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
         "cal-api-version": "2024-08-13",
       },
     });
@@ -109,16 +137,17 @@ async function handleSlots(url, env) {
   } catch {
     return jsonResponse(
       { status: "error", message: "Failed to reach Cal.com API" },
-      502
+      502,
+      false
     );
   }
 }
 
 /* ─── Helpers ─── */
-function jsonResponse(data, status = 200) {
+function jsonResponse(data, status = 200, cache = true) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: corsHeaders(),
+    headers: corsHeaders(cache),
   });
 }
 
@@ -126,12 +155,13 @@ function handleCORS() {
   return new Response(null, { status: 204, headers: corsHeaders() });
 }
 
-function corsHeaders() {
-  return {
+function corsHeaders(cache = true) {
+  const headers = {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
-    "Cache-Control": "public, max-age=60",
   };
+  headers["Cache-Control"] = cache ? "public, max-age=60" : "no-store";
+  return headers;
 }

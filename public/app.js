@@ -224,7 +224,9 @@
     const we = addDays(ws, 6);
     dom.calMonth.textContent = ws.getMonth() === we.getMonth()
       ? `${MONTHS[ws.getMonth()]} ${ws.getFullYear()}`
-      : `${MONTHS[ws.getMonth()].slice(0,3)} – ${MONTHS[we.getMonth()]} ${we.getFullYear()}`;
+      : ws.getFullYear() === we.getFullYear()
+        ? `${MONTHS[ws.getMonth()].slice(0,3)} – ${MONTHS[we.getMonth()]} ${we.getFullYear()}`
+        : `${MONTHS[ws.getMonth()].slice(0,3)} ${ws.getFullYear()} – ${MONTHS[we.getMonth()].slice(0,3)} ${we.getFullYear()}`;
 
     dom.prevWeek.disabled = ws <= weekStart(new Date());
 
